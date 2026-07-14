@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Energia Elétrica SCBA 2026</title>
+    <meta name="description" content="Dashboard interativo para análise de custos orçados x realizados de energia elétrica nas unidades SCBA 2026.">
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js for responsive animated charting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside>
+        <div class="sidebar-logo">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.5 2L3 14h9l-1 8 8.5-12h-9l1-8z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h1>Painel de Energia</h1>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-section-title">Navegação</div>
+            <div id="btn-global" class="menu-item active" onclick="switchView('global')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="9"></rect>
+                    <rect x="14" y="3" width="7" height="5"></rect>
+                    <rect x="14" y="12" width="7" height="9"></rect>
+                    <rect x="3" y="16" width="7" height="5"></rect>
+                </svg>
+                <span>Resumo Geral</span>
+            </div>
+            
+            <div class="menu-section-title">Unidades (Abas)</div>
+            <div id="sidebar-units" class="sidebar-units-list">
+                <!-- Unit list items will be generated dynamically by app.js -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header>
+            <div class="header-title">
+                <h2 id="view-title">Resumo Geral - Energia Elétrica 2026</h2>
+                <p id="view-subtitle">Consolidado das despesas e previsões financeiras</p>
+            </div>
+            <div class="header-logo">
+                <img src="logo_santacasa.jpeg" alt="Logo Santa Casa" class="logo-img">
+            </div>
+        </header>
+
+        <!-- Dynamic Filter and Period Selector Bar -->
+        <section class="filter-bar">
+            <div class="filter-group">
+                <div class="filter-group-item">
+                    <span class="filter-label">Mês Inicial:</span>
+                    <select id="select-start-month" class="select-control" onchange="onPeriodChange()">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2">Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6">Julho</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                </div>
+                <div class="filter-group-item">
+                    <span class="filter-label">Mês Final:</span>
+                    <select id="select-end-month" class="select-control" onchange="onPeriodChange()">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2">Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6" selected>Julho</option> <!-- Default to July since current data is up to July -->
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">Períodos Rápidos:</span>
+                <div class="presets-container">
+                    <button id="preset-ytd" class="btn-preset active" onclick="applyPreset('ytd')">Acumulado (Jan-Jul)</button>
+                    <button id="preset-q1" class="btn-preset" onclick="applyPreset('q1')">1º Trimestre (Q1)</button>
+                    <button id="preset-q2" class="btn-preset" onclick="applyPreset('q2')">2º Trimestre (Q2)</button>
+                    <button id="preset-full" class="btn-preset" onclick="applyPreset('full')">Ano Inteiro (Jan-Dez)</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- KPI Performance Metrics Card Grid -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Orçamento Previsto</span>
+                    <div class="kpi-icon primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div id="kpi-orcado" class="kpi-value">R$ 0,00</div>
+                <div class="kpi-footer">Orçado para o período</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Custo Realizado</span>
+                    <div class="kpi-icon success" id="kpi-realizado-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                            <line x1="12" y1="10" x2="12" y2="10"></line>
+                            <circle cx="12" cy="12" r="2"></circle>
+                        </svg>
+                    </div>
+                </div>
+                <div id="kpi-realizado" class="kpi-value">R$ 0,00</div>
+                <div class="kpi-footer">Custo real no período</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Economia / Saldo</span>
+                    <div class="kpi-icon warning" id="kpi-desvio-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 2 22 22 22 12 2"></polygon>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                </div>
+                <div id="kpi-desvio" class="kpi-value">R$ 0,00</div>
+                <div id="kpi-desvio-footer" class="kpi-footer">Saldo positivo</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">% Desempenho</span>
+                    <div class="kpi-icon accent">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
+                </div>
+                <div id="kpi-percentual" class="kpi-value">0,0%</div>
+                <div class="kpi-footer">Proporção Realizado/Orçado</div>
+            </div>
+        </section>
+
+        <!-- ======================= -->
+        <!-- VIEW 1: GLOBAL RESUMO   -->
+        <!-- ======================= -->
+        <div id="view-global" class="view-panel active">
+            <div class="dashboard-grid">
+                <!-- Global Chart Panel -->
+                <div class="card-panel">
+                    <div class="card-panel-header">
+                        <h3 class="card-panel-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="20" x2="18" y2="10"></line>
+                                <line x1="12" y1="20" x2="12" y2="4"></line>
+                                <line x1="6" y1="20" x2="6" y2="14"></line>
+                            </svg>
+                            Comparativo Geral: Orçado vs. Realizado por Unidade
+                        </h3>
+                    </div>
+                    <div class="chart-container-large">
+                        <canvas id="chart-global-compare"></canvas>
+                    </div>
+                </div>
+
+                <!-- Doughnut Chart: Cost distribution -->
+                <div class="card-panel">
+                    <div class="card-panel-header">
+                        <h3 class="card-panel-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                                <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                            </svg>
+                            Distribuição de Custo por Unidade
+                        </h3>
+                    </div>
+                    <div class="chart-container-large">
+                        <canvas id="chart-global-distribution"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Global Summary Table Panel -->
+            <div class="card-panel">
+                <div class="card-panel-header">
+                    <h3 class="card-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Planilha Resumo de Resultados por Unidade
+                    </h3>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Unidade Hospitalar / Clínica</th>
+                                <th class="cell-right">Orçado (R$)</th>
+                                <th class="cell-right">Realizado (R$)</th>
+                                <th class="cell-right">Diferença (R$)</th>
+                                <th class="cell-right">Percentual Realizado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-global-rows">
+                            <!-- Dynamic summary rows generated by app.js -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="row-total" id="table-global-totals">
+                                <!-- Dynamic totals row generated by app.js -->
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- VIEW 2: UNIT DETAIL     -->
+        <!-- ======================= -->
+        <div id="view-unit" class="view-panel">
+            <button class="btn-back" onclick="switchView('global')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Voltar ao Resumo Geral
+            </button>
+
+            <!-- Conditional Unit Special Notice Box -->
+            <div id="unit-notice-box" class="alert-box warning" style="display: none;">
+                <!-- Filled dynamically if sheet has notes -->
+            </div>
+
+            <!-- Detail Grid Charts -->
+            <div class="detail-grid">
+                <!-- Custo Monthly Chart -->
+                <div class="card-panel">
+                    <div class="card-panel-header">
+                        <h3 class="card-panel-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 3v18h18"></path>
+                                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+                            </svg>
+                            Evolução Mensal Financeira: Orçado vs. Realizado (R$)
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-unit-monthly"></canvas>
+                    </div>
+                </div>
+
+                <!-- Consumo Monthly Chart (if available) -->
+                <div class="card-panel">
+                    <div class="card-panel-header">
+                        <h3 class="card-panel-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                            </svg>
+                            Evolução Mensal de Consumo Físico (kWh)
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart-unit-consumption"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Monthly Data Table -->
+            <div class="card-panel">
+                <div class="card-panel-header">
+                    <h3 class="card-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Detalhamento Mensal de Contratos e Despesas (Mês de Referência)
+                    </h3>
+                </div>
+                <div class="table-wrapper">
+                    <table id="table-unit-monthly">
+                        <thead>
+                            <tr id="table-unit-header">
+                                <!-- Dynamic headers generated by app.js (Mês, Contrato 1, Contrato 2, Total Orçado, Total Realizado, Desvio) -->
+                            </tr>
+                        </thead>
+                        <tbody id="table-unit-rows">
+                            <!-- Dynamic rows generated by app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Detailed Cost Items Breakdown Table -->
+            <div class="card-panel" style="margin-top: 24px;">
+                <div class="card-panel-header">
+                    <h3 class="card-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Detalhamento por Item de Custo
+                    </h3>
+                    <div class="filter-group">
+                        <span class="filter-label">Mês Selecionado:</span>
+                        <select id="select-cost-item-month" class="select-control" onchange="onCostItemMonthChange()">
+                            <!-- Generated dynamically by app.js based on current range -->
+                        </select>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Descrição do Custo</th>
+                                <th class="cell-right">Orçado (R$)</th>
+                                <th class="cell-right">Realizado (R$)</th>
+                                <th class="cell-right">Diferença (R$)</th>
+                                <th class="cell-right">Percentual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-unit-cost-items-rows">
+                            <!-- Dynamic rows generated by app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script loading -->
+    <script src="dashboard_data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
